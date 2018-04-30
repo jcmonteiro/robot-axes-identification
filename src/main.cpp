@@ -5,12 +5,19 @@
 
 using namespace axes_ident;
 
-int main()
+int main(int argc, char **argv)
 {
+    if (argc != 2)
+    {
+        std::cerr << "[Error] Only one argument containing the file name is expected!" << std::endl;
+        return 1;
+    }
+
     DataParser::Data data;
 
     DataParser parser;
-    parser.readFile("/home/jcmonteiro/Documents/coding/axes_ident/panda.txt", data);
+    if (!parser.readFile(argv[1], data))
+        return 1;
 
     std::cout << data << std::endl;
 

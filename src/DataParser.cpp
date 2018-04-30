@@ -47,7 +47,10 @@ bool DataParser::readFile(std::string fname, Data &ret)
     std::ifstream file(fname);
 
     if (!file.is_open())
+    {
+        std::cerr << "[Error] Failed to open " << fname << ". Check the file path!" << std::endl;
         return false;
+    }
 
     std::string line;
     jumpHeader(file);
