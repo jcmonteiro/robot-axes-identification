@@ -1,6 +1,7 @@
 #include "DataParser.hpp"
 
 #include <iostream>
+#include <iterator>
 #include <vector>
 
 using namespace axes_ident;
@@ -51,14 +52,28 @@ bool DataParser::readFile(std::string fname, Data &ret)
     std::string line;
     jumpHeader(file);
 
-    int pos = file.tellg();
+    int file_pos = file.tellg();
     std::getline(file, line);
-    file.seekg(pos);
+    file.seekg(file_pos);
 
     unsigned int n_cols = 0;
     processLine(line, [&n_cols] (std::string number) {++n_cols;} );
 
-    unsigned int total_rows = 100;
+    // stop skipping new lines to count the amount of lines
+    file.unsetf(std::ios_base::skipws);
+
+    // count the newlines
+    const unsigned int total_rows = std::count(
+        std::istream_iterator<char>(file),
+        std::istream_iterator<char>(), 
+        '\n');
+
+    // don't know why, but the file has to be closed after running this newline counter...
+    // reseting std::ios_base::skipws and calling seekg did not work
+    file.close();
+    file.open(fname);
+    file.seekg(file_pos);
+
     ret.resize(total_rows, n_cols);
 
     unsigned int k = 0, n_rows = 0;
@@ -69,15 +84,11 @@ bool DataParser::readFile(std::string fname, Data &ret)
             std::clog << "[Warn] File will not be processed any further due to an empty line" << std::endl;
             break;
         }
-        if (++n_rows > total_rows)
-        {
-            total_rows *= 2;
-            ret.conservativeResize(total_rows, n_cols);
-        }
         processLine(line, [&ret, &k] (std::string number)
             {
                 ret(k++) = std::atof(number.c_str());
             });
+        ++n_rows;
     }
     ret.conservativeResize(n_rows, n_cols);
 
