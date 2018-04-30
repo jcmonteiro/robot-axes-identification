@@ -64,6 +64,11 @@ bool DataParser::readFile(std::string fname, Data &ret)
     unsigned int k = 0, n_rows = 0;
     while (std::getline(file, line))
     {
+        if (line.empty())
+        {
+            std::clog << "[Warn] File will not be processed any further due to an empty line" << std::endl;
+            break;
+        }
         if (++n_rows > total_rows)
         {
             total_rows *= 2;
