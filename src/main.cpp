@@ -1,13 +1,18 @@
 #include <iostream>
 #include <Eigen/Dense>
 
+#include "DataParser.hpp"
+
+using namespace axes_ident;
+
 int main()
 {
-    Eigen::MatrixXd m(2,2);
-    m(0,0) = 3;
-    m(1,0) = 2.5;
-    m(0,1) = -1;
-    m(1,1) = m(1,0) + m(0,1);
-    std::cout << m << std::endl;
+    DataParser::Data data;
+
+    DataParser parser;
+    parser.readFile("/home/jcmonteiro/Documents/coding/axes_ident/panda.txt", data);
+
+    std::cout << data << std::endl;
+
     return 0;
 }
