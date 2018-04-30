@@ -5,6 +5,9 @@
             "label": "Run identification",
             "type": "process",
             "command": "./build/axes-ident",
+            "args": [
+                "tests/panda.txt"
+            ],
             "problemMatcher": []
         },
         {
