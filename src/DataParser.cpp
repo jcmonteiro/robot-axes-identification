@@ -7,7 +7,7 @@
 using namespace axes_ident;
 
 DataParser::DataParser() :
-    delim('\t'), header_size(0)
+    delim(' '), header_size(0)
 {
 }
 
@@ -64,6 +64,17 @@ bool DataParser::readFile(std::string fname, Data &data)
 
     unsigned int n_cols = 0;
     processLine(line, [&n_cols] (std::string number) {++n_cols;} );
+    // If the delimiter is not set correctly, only one column will be detected,
+    // since the second callback in DataParser::processLine will be called.
+    // Therefore, I am assuming that if only one column is detected, than an
+    // incorrect delimiter has been passed. This should not be a problem, since
+    // one column data files are not valid for this application.
+    if (n_cols == 1)
+    {
+        std::cerr << "[Error] No columns were detected. Check if the delimiter has been chosen correctly." << std::endl;
+        return false;
+    }
+    std::cout << n_cols << std::endl;
 
     // stop skipping new lines to count the amount of lines
     file.unsetf(std::ios_base::skipws);

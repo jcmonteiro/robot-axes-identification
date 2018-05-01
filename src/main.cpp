@@ -17,6 +17,7 @@ int main(int argc, char **argv)
 
     DataParser parser;
     parser.setFilter( {3,4,5} );
+    parser.setDelimiter('\t');
     if (!parser.readFile(argv[1], data))
         return 1;
     parser.appendMovingJointIndex(data);
