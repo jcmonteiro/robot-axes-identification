@@ -16,10 +16,10 @@ int main(int argc, char **argv)
     DataParser::Data data;
 
     DataParser parser;
+    parser.setFilter( {3,4,5} );
     if (!parser.readFile(argv[1], data))
         return 1;
-
-    std::cout << data << std::endl;
+    parser.appendMovingJointIndex(data);
 
     return 0;
 }

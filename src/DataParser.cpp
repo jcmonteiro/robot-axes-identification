@@ -23,6 +23,7 @@ void DataParser::jumpHeader(std::ifstream &file)
 void DataParser::processLine(std::string &line, std::function<void (std::string)> callback)
 {
     std::string str_number = "";
+    unsigned int index = 0;
     for (auto iter_char = line.begin() ; iter_char < line.end() ; ++iter_char)
     {
         if (*iter_char != ' ' && *iter_char != delim)
@@ -31,6 +32,8 @@ void DataParser::processLine(std::string &line, std::function<void (std::string)
         }
         else if (!str_number.empty())
         {
+            if (std::find(filter.begin(), filter.end(), index++) != filter.end())
+                continue;
             callback(str_number);
             str_number = "";
         }
@@ -42,7 +45,7 @@ void DataParser::processLine(std::string &line, std::function<void (std::string)
     }
 }
 
-bool DataParser::readFile(std::string fname, Data &ret)
+bool DataParser::readFile(std::string fname, Data &data)
 {
     std::ifstream file(fname);
 
@@ -77,7 +80,7 @@ bool DataParser::readFile(std::string fname, Data &ret)
     file.open(fname);
     file.seekg(file_pos);
 
-    ret.resize(total_rows, n_cols);
+    data.resize(total_rows, n_cols);
 
     unsigned int k = 0, n_rows = 0;
     while (std::getline(file, line))
@@ -87,14 +90,33 @@ bool DataParser::readFile(std::string fname, Data &ret)
             std::clog << "[Warn] File will not be processed any further due to an empty line" << std::endl;
             break;
         }
-        processLine(line, [&ret, &k] (std::string number)
+        processLine(line, [&data, &k] (std::string number)
             {
-                ret(k++) = std::atof(number.c_str());
+                data(k++) = std::atof(number.c_str());
             });
         ++n_rows;
     }
-    ret.conservativeResize(n_rows, n_cols);
+    data.conservativeResize(n_rows, n_cols);
 
     file.close();
     return true;
+}
+
+void DataParser::appendMovingJointIndex(Data &data)
+{
+    data.conservativeResize(data.rows(), data.cols() + 1);
+    unsigned int n_joints = data.cols() - 4;
+    auto joints = data.block(0, 0, data.rows(), n_joints);
+    
+    unsigned int ind_last = data.cols() - 1;
+    data(0, ind_last) = -1;
+    auto last_row = joints.row(0).array();
+    Eigen::ArrayXd::Index index;
+    for (unsigned int k = 1; k < data.rows(); ++k)
+    {
+        auto row = joints.row(k).array();
+        Eigen::abs(row - last_row).maxCoeff(&index);
+        data(k, ind_last) = index;
+        last_row = row;
+    }
 }
