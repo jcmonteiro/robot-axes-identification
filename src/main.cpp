@@ -21,5 +21,7 @@ int main(int argc, char **argv)
         return 1;
     parser.appendMovingJointIndex(data);
 
+    std::cout << data << std::endl;
+
     return 0;
 }

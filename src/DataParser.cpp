@@ -23,7 +23,7 @@ void DataParser::jumpHeader(std::ifstream &file)
 void DataParser::processLine(std::string &line, std::function<void (std::string)> callback)
 {
     std::string str_number = "";
-    unsigned int index = 0;
+    unsigned int index_max = 0;
     for (auto iter_char = line.begin() ; iter_char < line.end() ; ++iter_char)
     {
         if (*iter_char != ' ' && *iter_char != delim)
@@ -32,7 +32,7 @@ void DataParser::processLine(std::string &line, std::function<void (std::string)
         }
         else if (!str_number.empty())
         {
-            if (std::find(filter.begin(), filter.end(), index++) != filter.end())
+            if (std::find(filter.begin(), filter.end(), index_max++) != filter.end())
                 continue;
             callback(str_number);
             str_number = "";
@@ -102,21 +102,24 @@ bool DataParser::readFile(std::string fname, Data &data)
     return true;
 }
 
-void DataParser::appendMovingJointIndex(Data &data)
+void DataParser::appendMovingJointIndex(Data &data, double tol_max_stall_movement)
 {
     data.conservativeResize(data.rows(), data.cols() + 1);
     unsigned int n_joints = data.cols() - 4;
     auto joints = data.block(0, 0, data.rows(), n_joints);
     
     unsigned int ind_last = data.cols() - 1;
-    data(0, ind_last) = -1;
-    auto last_row = joints.row(0).array();
-    Eigen::ArrayXd::Index index;
+    data(0, ind_last) = DataParser::INDEX_INVALID;
+    Eigen::ArrayXd last_row = joints.row(0).array(), row, row_diff;
+    Eigen::ArrayXd::Index index_max, index_stall_max;
     for (unsigned int k = 1; k < data.rows(); ++k)
     {
-        auto row = joints.row(k).array();
-        Eigen::abs(row - last_row).maxCoeff(&index);
-        data(k, ind_last) = index;
+        row = joints.row(k).array();
+        row_diff = Eigen::abs(row - last_row);
+        row_diff.maxCoeff(&index_max);
+        row_diff(index_max) = 0;
+        row_diff.maxCoeff(&index_stall_max);
+        data(k, ind_last) = (row_diff(index_stall_max) > tol_max_stall_movement) ? DataParser::INDEX_INVALID : index_max;
         last_row = row;
     }
 }

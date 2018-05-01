@@ -15,6 +15,11 @@ public:
      */
     typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Data;
 
+    /**
+     * @brief Moving joint index when the experiment is not valid.
+     */
+    const static int INDEX_INVALID = -1;
+
 private:
     char delim;
     unsigned int header_size;
@@ -54,9 +59,13 @@ public:
     /**
      * @brief Appends a column indicating which joint moved from the last to the current row.
      * 
+     * If movement above a threshold value is detected on the ramaining joints, the experiment
+     * is considered invalid and \ref DataParser.INDEX_INVALID is added in the end of the row.
+     * 
      * @param data matrix containing the experimental data.
+     * @param tol_max_stall_movement maximum allowed movement on the joints that should not have moved.
      */
-    void appendMovingJointIndex(Data &data);
+    void appendMovingJointIndex(Data &data, double tol_max_stall_movement = 0.0002);
 
     /**
      * @brief Sets the delimiter character (besides empty spaces) that separates the values in the data file.
