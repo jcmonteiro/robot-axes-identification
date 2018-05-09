@@ -7,11 +7,12 @@
 using namespace axes_ident;
 
 DataParser::DataParser() :
-    delim(' '), header_size(0)
+    delim(' '), header_size(0), n_joints(0),
+    ok_data(false), tol_max_stall_movement(0.0002)
 {
 }
 
-void DataParser::jumpHeader(std::ifstream &file)
+void DataParser::_jumpHeader(std::ifstream &file)
 {
     file.seekg(0);
     std::string line;
@@ -20,7 +21,7 @@ void DataParser::jumpHeader(std::ifstream &file)
     return;
 }
 
-void DataParser::processLine(std::string &line, std::function<void (std::string)> callback)
+void DataParser::_processLine(std::string &line, std::function<void (std::string)> callback)
 {
     std::string str_number = "";
     unsigned int index_max = 0;
@@ -45,10 +46,38 @@ void DataParser::processLine(std::string &line, std::function<void (std::string)
     }
 }
 
-bool DataParser::readFile(std::string fname, Data &data)
+void DataParser::_appendMovingJointIndex()
 {
-    std::ifstream file(fname);
+    data.conservativeResize(data.rows(), data.cols() + 1);
+    n_joints = data.cols() - 4;
+    auto joints = data.block(0, 0, data.rows(), n_joints);
+    
+    unsigned int ind_last = data.cols() - 1;
+    data(0, ind_last) = DataParser::INDEX_INVALID;
+    Eigen::ArrayXd last_row = joints.row(0).array(), row, row_diff;
+    Eigen::ArrayXd::Index index_max, index_stall_max;
+    for (unsigned int k = 1; k < data.rows(); ++k)
+    {
+        row = joints.row(k).array();
+        row_diff = Eigen::abs(row - last_row);
+        row_diff.maxCoeff(&index_max);
+        row_diff(index_max) = 0;
+        row_diff.maxCoeff(&index_stall_max);
+        data(k, ind_last) = (row_diff(index_stall_max) > tol_max_stall_movement) ? DataParser::INDEX_INVALID : index_max;
+        last_row = row;
+    }
+}
 
+bool DataParser::_validateMovingJointIndices()
+{
+    return data.col(data.cols() - 1).array().maxCoeff() == (n_joints - 1);
+}
+
+bool DataParser::readFile(std::string fname)
+{
+    this->clear();
+
+    std::ifstream file(fname);
     if (!file.is_open())
     {
         std::cerr << "[Error] Failed to open " << fname << ". Check the file path!" << std::endl;
@@ -56,16 +85,16 @@ bool DataParser::readFile(std::string fname, Data &data)
     }
 
     std::string line;
-    jumpHeader(file);
+    _jumpHeader(file);
 
     int file_pos = file.tellg();
     std::getline(file, line);
     file.seekg(file_pos);
 
     unsigned int n_cols = 0;
-    processLine(line, [&n_cols] (std::string number) {++n_cols;} );
+    _processLine(line, [&n_cols] (std::string number) {++n_cols;} );
     // If the delimiter is not set correctly, only one column will be detected,
-    // since the second callback in DataParser::processLine will be called.
+    // since the second callback in DataParser::_processLine will be called.
     // Therefore, I am assuming that if only one column is detected, than an
     // incorrect delimiter has been passed. This should not be a problem, since
     // one column data files are not valid for this application.
@@ -101,36 +130,17 @@ bool DataParser::readFile(std::string fname, Data &data)
             std::clog << "[Warn] File will not be processed any further due to an empty line" << std::endl;
             break;
         }
-        processLine(line, [&data, &k] (std::string number)
+        _processLine(line, [this, &k] (std::string number)
             {
-                data(k++) = std::atof(number.c_str());
+                this->data(k++) = std::atof(number.c_str());
             });
         ++n_rows;
     }
     data.conservativeResize(n_rows, n_cols);
 
     file.close();
-    return true;
-}
 
-void DataParser::appendMovingJointIndex(Data &data, double tol_max_stall_movement)
-{
-    data.conservativeResize(data.rows(), data.cols() + 1);
-    unsigned int n_joints = data.cols() - 4;
-    auto joints = data.block(0, 0, data.rows(), n_joints);
-    
-    unsigned int ind_last = data.cols() - 1;
-    data(0, ind_last) = DataParser::INDEX_INVALID;
-    Eigen::ArrayXd last_row = joints.row(0).array(), row, row_diff;
-    Eigen::ArrayXd::Index index_max, index_stall_max;
-    for (unsigned int k = 1; k < data.rows(); ++k)
-    {
-        row = joints.row(k).array();
-        row_diff = Eigen::abs(row - last_row);
-        row_diff.maxCoeff(&index_max);
-        row_diff(index_max) = 0;
-        row_diff.maxCoeff(&index_stall_max);
-        data(k, ind_last) = (row_diff(index_stall_max) > tol_max_stall_movement) ? DataParser::INDEX_INVALID : index_max;
-        last_row = row;
-    }
+    this->_appendMovingJointIndex();
+    ok_data = this->_validateMovingJointIndices();
+    return ok_data;
 }

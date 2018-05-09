@@ -13,16 +13,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    DataParser::Data data;
-
     DataParser parser;
     parser.setFilter( {3,4,5} );
     parser.setDelimiter('\t');
-    if (!parser.readFile(argv[1], data))
+    if (!parser.readFile(argv[1]))
         return 1;
-    parser.appendMovingJointIndex(data);
 
-    std::cout << data << std::endl;
+    std::cout << parser.getData() << std::endl;
 
     return 0;
 }

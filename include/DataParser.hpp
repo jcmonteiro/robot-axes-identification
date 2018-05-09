@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <fstream>
 #include <vector>
 #include <Eigen/Dense>
@@ -22,15 +23,18 @@ public:
 
 private:
     char delim;
-    unsigned int header_size;
+    unsigned int header_size, n_joints;
     std::vector<unsigned int> filter;
+    Data data;
+    bool ok_data;
+    double tol_max_stall_movement;
 
     /**
      * @brief Jumps through the data file header lines.
      * 
      * @param file stream that describes the file.
      */
-    void jumpHeader(std::ifstream &file);
+    void _jumpHeader(std::ifstream &file);
 
     /**
      * @brief Reads a line of values and calls the callback for each number.
@@ -38,7 +42,38 @@ private:
      * @param line the line to be read.
      * @param callback the callback that is called for each number.
      */
-    void processLine(std::string &line, std::function<void (std::string)> callback);
+    void _processLine(std::string &line, std::function<void (std::string)> callback);
+
+    /**
+     * @brief Appends a column (to the data matrix) indicating which joint moved from the last to the current row.
+     * 
+     * If movement above a threshold value is detected on the ramaining joints, the experiment
+     * is considered invalid and \ref DataParser.INDEX_INVALID is added in the end of the row.
+     */
+    void _appendMovingJointIndex();
+
+    /**
+     * @brief Validates the experimental data, checking if there are as many experiments needed to identify every joint.
+     * 
+     * @return true if there are as many indices as joints
+     * @return false if there are less indices than joints
+     */
+    bool _validateMovingJointIndices();
+
+    /**
+     * @brief Validates the tolerance value, setting it to tol = abs(tol) if it is negative
+     * 
+     * @param tol tolerance value
+     */
+    void _validateTolerance(double &tol)
+    {
+        if (tol < 0)
+        {
+            std::cerr << "[Error] Negative tolerance value. Changing from " << tol <<
+            " to " << (-tol) << '.' << std::endl;
+            tol = -tol; 
+        }
+    }
 
 public:
     /**
@@ -47,25 +82,25 @@ public:
     DataParser();
 
     /**
-     * @brief Reads a data file and stores the result in the matrix \p data.
+     * @brief Maximum allowed movement on the joints that should not have moved.
      * 
-     * @param fname full file name.
-     * @param data matrix where the data is stored.
-     * @return true if the file is read successfully.
-     * @return false if the file cannot be read.
+     * @param tol_stall tolerance value
      */
-    bool readFile(std::string fname, Data &data);
+    inline void setToleranceStall(double tol_stall)
+    {
+        this->_validateTolerance(tol_stall);
+        tol_max_stall_movement = tol_stall;
+    }
 
     /**
-     * @brief Appends a column indicating which joint moved from the last to the current row.
+     * @brief Reads a data file and stores the results internally.
      * 
-     * If movement above a threshold value is detected on the ramaining joints, the experiment
-     * is considered invalid and \ref DataParser.INDEX_INVALID is added in the end of the row.
-     * 
-     * @param data matrix containing the experimental data.
-     * @param tol_max_stall_movement maximum allowed movement on the joints that should not have moved.
+     * @param fname full file name.
+     * @return true if the file is read successfully.
+     * @return false if the file cannot be read.
+     * @see getData
      */
-    void appendMovingJointIndex(Data &data, double tol_max_stall_movement = 0.0002);
+    bool readFile(std::string fname);
 
     /**
      * @brief Sets the delimiter character (besides empty spaces) that separates the values in the data file.
@@ -95,6 +130,37 @@ public:
     inline void setFilter(const std::vector<unsigned int> val)
     {
         filter = val;
+    }
+
+    /**
+     * @brief Check if the data contains any errors
+     * 
+     * @return true if no errors are found
+     * @return false if errors are found
+     */
+    inline bool check()
+    {
+        return ok_data;
+    }
+
+    /**
+     * @brief Clear stored data.
+     */
+    inline void clear()
+    {
+        data.resize(0,0);
+        n_joints = 0;
+        ok_data = false;
+    }
+
+    /**
+     * @brief Matrix with data read from file.
+     * 
+     * @return Data matrix
+     */
+    inline const Data & getData()
+    {
+        return data;
     }
 };
 
