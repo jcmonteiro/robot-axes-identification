@@ -17,8 +17,8 @@ joint_1  joint_2  ...  joint_N  roll  pitch  yaw
 
 - The robot may possess an arbitrary amount of joints.
 - The header line is optional.
-- Only on joint may vary from one row (k) to the other (k+1). Otherwise, the k-th row is deleted.
--- Actually, small movements are allowed as long as they do not surpass a given tolereance.
+- Only one joint may vary from one row (k) to the other (k+1). Otherwise, the k-th row is deleted.
+-- Actually, small movements are allowed as long as they do not surpass a given tolerance.
 - The last three columns might be replaced by nine columns containing the elements of the rotation matrix
   in row-major order.
 
