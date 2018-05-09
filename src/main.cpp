@@ -2,6 +2,7 @@
 #include <Eigen/Dense>
 
 #include "DataParser.hpp"
+#include "Identification.hpp"
 
 using namespace axes_ident;
 
@@ -19,7 +20,9 @@ int main(int argc, char **argv)
     if (!parser.readFile(argv[1]))
         return 1;
 
-    std::cout << parser.getData() << std::endl;
+    Identification ident(parser.getNJoints());
+    ident.setData(parser.getData());
+    ident.identifyAxes();
 
     return 0;
 }
