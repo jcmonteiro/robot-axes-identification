@@ -34,7 +34,10 @@ void DataParser::_processLine(std::string &line, std::function<void (std::string
         else if (!str_number.empty())
         {
             if (std::find(filter.begin(), filter.end(), index_max++) != filter.end())
+            {
+                str_number = "";
                 continue;
+            }
             callback(str_number);
             str_number = "";
         }
