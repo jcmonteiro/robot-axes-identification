@@ -103,7 +103,6 @@ bool DataParser::readFile(std::string fname)
         std::cerr << "[Error] No columns were detected. Check if the delimiter has been chosen correctly." << std::endl;
         return false;
     }
-    std::cout << n_cols << std::endl;
 
     // stop skipping new lines to count the amount of lines
     file.unsetf(std::ios_base::skipws);
