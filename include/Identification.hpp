@@ -13,13 +13,13 @@ private:
     DataParser::Data data;
     Eigen::Matrix<double, 3, Eigen::Dynamic> axes;
 
-    int n_joints;
+    unsigned int n_joints;
 
-    void _resizeAxes(int n_joints);
+    void _resizeAxes(unsigned int n_joints);
     bool _checkNJoints();
 
 public:
-    Identification(int n_joints);
+    Identification(unsigned int n_joints);
 
     /**
      * @brief Set the Data object

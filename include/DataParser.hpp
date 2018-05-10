@@ -166,7 +166,7 @@ public:
     /**
      * @brief Number of joints.
      */
-    inline const unsigned int getNJoints()
+    inline unsigned int getNJoints()
     {
         return n_joints;
     }

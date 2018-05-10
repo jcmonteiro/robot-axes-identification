@@ -16,7 +16,7 @@ void DataParser::_jumpHeader(std::ifstream &file)
 {
     file.seekg(0);
     std::string line;
-    for (int k = 0; k < header_size; ++k)
+    for (unsigned int k = 0; k < header_size; ++k)
         std::getline(file, line);
     return;
 }
@@ -95,7 +95,7 @@ bool DataParser::readFile(std::string fname)
     file.seekg(file_pos);
 
     unsigned int n_cols = 0;
-    _processLine(line, [&n_cols] (std::string number) {++n_cols;} );
+    _processLine(line, [&n_cols] (std::string) {++n_cols;} );
     // If the delimiter is not set correctly, only one column will be detected,
     // since the second callback in DataParser::_processLine will be called.
     // Therefore, I am assuming that if only one column is detected, than an

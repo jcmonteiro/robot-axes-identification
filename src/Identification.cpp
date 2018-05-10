@@ -3,13 +3,13 @@
 
 using namespace axes_ident;
 
-Identification::Identification(int n_joints) :
+Identification::Identification(unsigned int n_joints) :
     n_joints(n_joints)
 {
     this->_resizeAxes(n_joints);
 }
 
-void Identification::_resizeAxes(int n_joints)
+void Identification::_resizeAxes(unsigned int n_joints)
 {
     this->n_joints = n_joints;
     axes = Eigen::MatrixXd(3, n_joints);
