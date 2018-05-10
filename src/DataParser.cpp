@@ -8,7 +8,8 @@ using namespace axes_ident;
 
 DataParser::DataParser() :
     delim(' '), header_size(0), n_joints(0),
-    ok_data(false), tol_max_stall_movement(0.0002)
+    ok_data(false), tol_max_stall_movement(0.0002),
+    mask_storage(Storage::SINGLE)
 {
 }
 
@@ -73,7 +74,9 @@ void DataParser::_appendMovingJointIndex()
 
 bool DataParser::_validateMovingJointIndices()
 {
-    return data.col(data.cols() - 1).array().maxCoeff() == (n_joints - 1);
+    return data.col(data.cols() - 1).array().maxCoeff() == (n_joints - 1)
+        && data.col(data.cols() - 1).array().minCoeff() == DataParser::INDEX_INVALID
+        && data(0, data.cols() - 1) == DataParser::INDEX_INVALID;
 }
 
 bool DataParser::readFile(std::string fname)

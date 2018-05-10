@@ -21,6 +21,15 @@ public:
      */
     const static int INDEX_INVALID = -1;
 
+    /**
+     * @brief Storage type.
+     */
+    enum Storage
+    {
+        MULTIPLE = (1u << 0),
+        SINGLE   = (1u << 1)
+    };
+
 private:
     char delim;
     unsigned int header_size, n_joints;
@@ -28,6 +37,7 @@ private:
     Data data;
     bool ok_data;
     double tol_max_stall_movement;
+    unsigned short mask_storage;
 
     /**
      * @brief Jumps through the data file header lines.
@@ -169,6 +179,20 @@ public:
     inline unsigned int getNJoints()
     {
         return n_joints;
+    }
+
+    /**
+     * @brief Set the Storage Mask object
+     */
+    inline void setStorageMask(unsigned short mask)
+    {
+        if ( ((mask & Storage::SINGLE) != Storage::SINGLE) &&
+             ((mask & Storage::MULTIPLE) != Storage::MULTIPLE))
+        {
+            std::cerr << "[Error] Invalid storage mask. DataParser::Storage enum for valid types." << std::endl;
+            return;
+        }
+        mask_storage = mask;
     }
 };
 
