@@ -22,6 +22,11 @@ public:
     const static int INDEX_INVALID = -1;
 
     /**
+     * @brief Default value for maximum allowed movement on the joints that should not move.
+     */
+    constexpr static double DEFAULT_MAX_STALL_MOVEMENT = 0.0002;
+
+    /**
      * @brief Storage type.
      */
     enum Storage
@@ -54,14 +59,6 @@ private:
      * @param callback the callback that is called for each number.
      */
     void _processLine(std::string &line, std::function<void (std::string)> callback);
-
-    /**
-     * @brief Appends a column (to the data matrix) indicating which joint moved from the last to the current row.
-     * 
-     * If movement above a threshold value is detected on the ramaining joints, the experiment
-     * is considered invalid and \ref DataParser.INDEX_INVALID is added in the end of the row.
-     */
-    void _appendMovingJointIndex();
 
     /**
      * @brief Validates the experimental data, checking if there are as many experiments needed to identify every joint.
@@ -101,6 +98,16 @@ public:
      * @brief Construct a new Data Parser object.
      */
     DataParser();
+
+    static void splitExperimentIntoJoints(std::vector<Data> &data_by_joint, const Data &data, unsigned int n_joints);
+
+    /**
+     * @brief Appends a column (to the data matrix) indicating which joint moved from the last to the current row.
+     * 
+     * If movement above a threshold value is detected on the ramaining joints, the experiment
+     * is considered invalid and \ref DataParser.INDEX_INVALID is added in the end of the row.
+     */
+    static void appendMovingJointIndex(Data &data, unsigned int n_joints, double tol_max_stall_movement = DEFAULT_MAX_STALL_MOVEMENT);
 
     /**
      * @brief Maximum allowed movement on the joints that should not have moved.
@@ -170,6 +177,7 @@ public:
     inline void clear()
     {
         data.resize(0,0);
+        data_by_joint.clear();
         n_joints = 0;
         ok_data = false;
     }

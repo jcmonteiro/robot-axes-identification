@@ -8,7 +8,7 @@ using namespace axes_ident;
 
 DataParser::DataParser() :
     delim(' '), header_size(0), n_joints(0),
-    ok_data(false), tol_max_stall_movement(0.0002),
+    ok_data(false), tol_max_stall_movement(DataParser::DEFAULT_MAX_STALL_MOVEMENT),
     mask_storage(Storage::SINGLE)
 {
 }
@@ -50,10 +50,57 @@ void DataParser::_processLine(std::string &line, std::function<void (std::string
     }
 }
 
-void DataParser::_appendMovingJointIndex()
+bool DataParser::_validateMovingJointIndices() const
+{
+    return data.col(data.cols() - 1).array().maxCoeff() == (n_joints - 1)
+        && data.col(data.cols() - 1).array().minCoeff() == DataParser::INDEX_INVALID
+        && data(0, data.cols() - 1) == DataParser::INDEX_INVALID;
+}
+
+void DataParser::_arrangeStorage()
+{
+    if (this->_hasStorageMask(Storage::MULTIPLE))
+    {
+        DataParser::splitExperimentIntoJoints(data_by_joint, data, n_joints);
+    }
+
+    // Free memory if the user does not require this storage type
+    if (!this->_hasStorageMask(Storage::SINGLE))
+    {
+        data.resize(0,0);
+    }
+}
+
+void DataParser::splitExperimentIntoJoints(std::vector<Data> &data_by_joint, const Data &data, unsigned int n_joints)
+{
+    data_by_joint.clear();
+    data_by_joint.resize(n_joints);
+    unsigned int ind_last = data.cols() - 1;
+    // Count the occurrences of each experiment
+    for (unsigned int k = 0; k < n_joints; ++k)
+    {
+        int n_joint_k_experiments = (data.col(ind_last).array() == k).count();
+        data_by_joint[k].resize(2 * n_joint_k_experiments, data.cols());
+    }
+    // Populate matrices
+    Eigen::RowVectorXd last_row = data.row(0);
+    std::vector<unsigned int> index_row(n_joints);
+    std::fill(index_row.begin(), index_row.end(), 0);
+    for (unsigned int k = 1; k < data.rows(); ++k)
+    {
+        const Eigen::RowVectorXd &row = data.row(k);
+        unsigned int ind_joint = row(ind_last);
+        if ((int) ind_joint == DataParser::INDEX_INVALID)
+            continue;
+        data_by_joint[ind_joint].row(index_row[ind_joint]++) = last_row;
+        data_by_joint[ind_joint].row(index_row[ind_joint]++) = row;
+        last_row = row;
+    }
+}
+
+void DataParser::appendMovingJointIndex(DataParser::Data &data, unsigned int n_joints, double tol_max_stall_movement)
 {
     data.conservativeResize(data.rows(), data.cols() + 1);
-    n_joints = data.cols() - 4;
     auto joints = data.block(0, 0, data.rows(), n_joints);
     
     unsigned int ind_last = data.cols() - 1;
@@ -69,48 +116,6 @@ void DataParser::_appendMovingJointIndex()
         row_diff.maxCoeff(&index_stall_max);
         data(k, ind_last) = (row_diff(index_stall_max) > tol_max_stall_movement) ? DataParser::INDEX_INVALID : index_max;
         last_row = row;
-    }
-}
-
-bool DataParser::_validateMovingJointIndices() const
-{
-    return data.col(data.cols() - 1).array().maxCoeff() == (n_joints - 1)
-        && data.col(data.cols() - 1).array().minCoeff() == DataParser::INDEX_INVALID
-        && data(0, data.cols() - 1) == DataParser::INDEX_INVALID;
-}
-
-void DataParser::_arrangeStorage()
-{
-    if (this->_hasStorageMask(Storage::MULTIPLE))
-    {
-        data_by_joint.resize(n_joints);
-        unsigned int ind_last = data.cols() - 1;
-        // Count the occurrences of each experiment
-        for (unsigned int k = 0; k < n_joints; ++k)
-        {
-            int n_joint_k_experiments = (data.col(ind_last).array() == k).count();
-            data_by_joint[k].resize(2 * n_joint_k_experiments, data.cols());
-        }
-        // Populate matrices
-        Eigen::RowVectorXd last_row = data.row(0);
-        std::vector<unsigned int> index_row(n_joints);
-        std::fill(index_row.begin(), index_row.end(), 0);
-        for (unsigned int k = 1; k < data.rows(); ++k)
-        {
-            const Eigen::RowVectorXd &row = data.row(k);
-            unsigned int ind_joint = row(ind_last);
-            if ((int) ind_joint == DataParser::INDEX_INVALID)
-                continue;
-            data_by_joint[ind_joint].row(index_row[ind_joint]++) = last_row;
-            data_by_joint[ind_joint].row(index_row[ind_joint]++) = row;
-            last_row = row;
-        }
-    }
-
-    // Free memory if the user does not require this storage type
-    if (!this->_hasStorageMask(Storage::SINGLE))
-    {
-        data.resize(0,0);
     }
 }
 
@@ -180,7 +185,8 @@ bool DataParser::readFile(std::string fname)
 
     file.close();
 
-    this->_appendMovingJointIndex();
+    n_joints = data.cols() - 3;
+    DataParser::appendMovingJointIndex(data, n_joints, tol_max_stall_movement);
     ok_data = this->_validateMovingJointIndices();
     this->_arrangeStorage();
     return ok_data;
