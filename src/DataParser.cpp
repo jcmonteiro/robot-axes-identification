@@ -72,11 +72,46 @@ void DataParser::_appendMovingJointIndex()
     }
 }
 
-bool DataParser::_validateMovingJointIndices()
+bool DataParser::_validateMovingJointIndices() const
 {
     return data.col(data.cols() - 1).array().maxCoeff() == (n_joints - 1)
         && data.col(data.cols() - 1).array().minCoeff() == DataParser::INDEX_INVALID
         && data(0, data.cols() - 1) == DataParser::INDEX_INVALID;
+}
+
+void DataParser::_arrangeStorage()
+{
+    if (this->_hasStorageMask(Storage::MULTIPLE))
+    {
+        data_by_joint.resize(n_joints);
+        unsigned int ind_last = data.cols() - 1;
+        // Count the occurrences of each experiment
+        for (unsigned int k = 0; k < n_joints; ++k)
+        {
+            int n_joint_k_experiments = (data.col(ind_last).array() == k).count();
+            data_by_joint[k].resize(2 * n_joint_k_experiments, data.cols());
+        }
+        // Populate matrices
+        Eigen::RowVectorXd last_row = data.row(0);
+        std::vector<unsigned int> index_row(n_joints);
+        std::fill(index_row.begin(), index_row.end(), 0);
+        for (unsigned int k = 1; k < data.rows(); ++k)
+        {
+            const Eigen::RowVectorXd &row = data.row(k);
+            unsigned int ind_joint = row(ind_last);
+            if ((int) ind_joint == DataParser::INDEX_INVALID)
+                continue;
+            data_by_joint[ind_joint].row(index_row[ind_joint]++) = last_row;
+            data_by_joint[ind_joint].row(index_row[ind_joint]++) = row;
+            last_row = row;
+        }
+    }
+
+    // Free memory if the user does not require this storage type
+    if (!this->_hasStorageMask(Storage::SINGLE))
+    {
+        data.resize(0,0);
+    }
 }
 
 bool DataParser::readFile(std::string fname)
@@ -147,5 +182,6 @@ bool DataParser::readFile(std::string fname)
 
     this->_appendMovingJointIndex();
     ok_data = this->_validateMovingJointIndices();
+    this->_arrangeStorage();
     return ok_data;
 }

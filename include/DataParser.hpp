@@ -35,6 +35,7 @@ private:
     unsigned int header_size, n_joints;
     std::vector<unsigned int> filter;
     Data data;
+    std::vector<Data> data_by_joint;
     bool ok_data;
     double tol_max_stall_movement;
     unsigned short mask_storage;
@@ -68,14 +69,14 @@ private:
      * @return true if there are as many indices as joints
      * @return false if there are less indices than joints
      */
-    bool _validateMovingJointIndices();
+    bool _validateMovingJointIndices() const;
 
     /**
-     * @brief Validates the tolerance value, setting it to tol = abs(tol) if it is negative
+     * @brief Validates the tolerance value, setting it to tol = abs(tol) if it is negative.
      * 
      * @param tol tolerance value
      */
-    void _validateTolerance(double &tol)
+    inline void _validateTolerance(double &tol) const
     {
         if (tol < 0)
         {
@@ -83,6 +84,16 @@ private:
             " to " << (-tol) << '.' << std::endl;
             tol = -tol; 
         }
+    }
+
+    /**
+     * @brief Configure storage based on the storage mask.
+     */
+    void _arrangeStorage();
+
+    inline bool _hasStorageMask(Storage mask) const
+    {
+        return (this->mask_storage & mask) == mask;
     }
 
 public:
@@ -148,7 +159,7 @@ public:
      * @return true if no errors are found
      * @return false if errors are found
      */
-    inline bool check()
+    inline bool check() const
     {
         return ok_data;
     }
@@ -166,17 +177,27 @@ public:
     /**
      * @brief Matrix with data read from file.
      * 
-     * @return Data matrix
+     * @return constant reference to the data matrix
      */
-    inline const Data & getData()
+    inline const Data & getData() const
     {
         return data;
     }
 
     /**
+     * @brief Get the Data By Joint object
+     * 
+     * @return constant reference to the vector containing data matrices for each joint
+     */
+    inline const std::vector<Data> & getDataByJoint() const
+    {
+        return data_by_joint;
+    }
+
+    /**
      * @brief Number of joints.
      */
-    inline unsigned int getNJoints()
+    inline unsigned int getNJoints() const
     {
         return n_joints;
     }
@@ -186,8 +207,8 @@ public:
      */
     inline void setStorageMask(unsigned short mask)
     {
-        if ( ((mask & Storage::SINGLE) != Storage::SINGLE) &&
-             ((mask & Storage::MULTIPLE) != Storage::MULTIPLE))
+        if ( !this->_hasStorageMask(Storage::SINGLE) &&
+             !this->_hasStorageMask(Storage::MULTIPLE) )
         {
             std::cerr << "[Error] Invalid storage mask. DataParser::Storage enum for valid types." << std::endl;
             return;
