@@ -71,6 +71,20 @@ void DataParser::_arrangeStorage()
     }
 }
 
+bool DataParser::_configureDataMatrices()
+{
+    n_joints = data.cols() - 3;
+    DataParser::appendMovingJointIndex(data, n_joints, tol_max_stall_movement);
+    ok_data = this->_validateMovingJointIndices();
+    if (!ok_data)
+    {
+        this->clear();
+        return false;
+    }
+    this->_arrangeStorage();
+    return true;
+}
+
 void DataParser::splitExperimentIntoJoints(std::vector<Data> &data_by_joint, const Data &data, unsigned int n_joints)
 {
     data_by_joint.clear();
@@ -102,7 +116,7 @@ void DataParser::appendMovingJointIndex(DataParser::Data &data, unsigned int n_j
 {
     data.conservativeResize(data.rows(), data.cols() + 1);
     auto joints = data.block(0, 0, data.rows(), n_joints);
-    
+
     unsigned int ind_last = data.cols() - 1;
     data(0, ind_last) = DataParser::INDEX_INVALID;
     Eigen::ArrayXd last_row = joints.row(0).array(), row, row_diff;
@@ -119,7 +133,7 @@ void DataParser::appendMovingJointIndex(DataParser::Data &data, unsigned int n_j
     }
 }
 
-bool DataParser::readFile(std::string fname)
+bool DataParser::readFile(const std::string &fname)
 {
     this->clear();
 
@@ -156,7 +170,7 @@ bool DataParser::readFile(std::string fname)
     // count the newlines
     const unsigned int total_rows = std::count(
         std::istream_iterator<char>(file),
-        std::istream_iterator<char>(), 
+        std::istream_iterator<char>(),
         '\n');
 
     // don't know why, but the file has to be closed after running this newline counter...
@@ -185,9 +199,11 @@ bool DataParser::readFile(std::string fname)
 
     file.close();
 
-    n_joints = data.cols() - 3;
-    DataParser::appendMovingJointIndex(data, n_joints, tol_max_stall_movement);
-    ok_data = this->_validateMovingJointIndices();
-    this->_arrangeStorage();
-    return ok_data;
+    return this->_configureDataMatrices();
+}
+
+bool DataParser::readData(const Data &data_user)
+{
+    data = data_user;
+    return this->_configureDataMatrices();
 }

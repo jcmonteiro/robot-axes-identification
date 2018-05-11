@@ -93,6 +93,11 @@ private:
         return (this->mask_storage & mask) == mask;
     }
 
+    /**
+     * @brief Configure the data matrices
+     */
+    bool _configureDataMatrices();
+
 public:
     /**
      * @brief Construct a new Data Parser object.
@@ -125,10 +130,20 @@ public:
      * 
      * @param fname full file name.
      * @return true if the file is read successfully.
-     * @return false if the file cannot be read.
-     * @see getData
+     * @return false if it fails.
+     * @see getData, getDataByJoint, readData
      */
-    bool readFile(std::string fname);
+    bool readFile(const std::string &fname);
+
+    /**
+     * @brief Reads a data matrix and stores the results internally.
+     * 
+     * @param data data matrix.
+     * @return true if the data is read successfully.
+     * @return false if it fails.
+     * @see getData, getDataByJoint, readFile
+     */
+    bool readData(const Data &data);
 
     /**
      * @brief Sets the delimiter character (besides empty spaces) that separates the values in the data file.
