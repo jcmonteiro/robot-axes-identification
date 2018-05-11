@@ -20,13 +20,19 @@ bool Identification::_checkNJoints()
     return this->n_joints >= 1;
 }
 
-bool Identification::setData(const DataParser::Data &data)
+bool Identification::setData(const DataParser &parser)
 {
     if (!this->_checkNJoints())
     {
         std::cerr << "[Warn] The number of joints was not correctly set. Changing it to " <<
             this->n_joints << " to match the data." << std::endl;
     }
+    if (!parser.check())
+    {
+        std::cerr << "[Error] Parser contains errors. Identification algorithm was not configured." << std::endl;
+        return false;
+    }
+    const DataParser::Data &data = parser.getData();
     if (data.cols() != n_joints + 4)
     {
         std::cerr << "[Error] Data columns = " << data.cols() << " , but " <<
@@ -44,12 +50,11 @@ bool Identification::setData(const DataParser::Data &data)
             n_joints + 1 << " were expected. Not all axes will be identified." << std::endl;
     }
     
-    this->data = data;
-    this->data(0, n_joints - 1) = DataParser::INDEX_INVALID;
+    this->data = parser.getDataByJoint();
     return true;
 }
 
-void Identification::identifyAxes(bool)
+Eigen::Matrix<double, 3, Eigen::Dynamic> Identification::identifyAxes(bool start_from_last)
 {
     // Housekeeping before main algorithm
     auto I = Eigen::Matrix3d::Identity();
@@ -57,51 +62,60 @@ void Identification::identifyAxes(bool)
     unsigned int ind_data_roll = n_joints;
     unsigned int ind_data_pitch = ind_data_roll + 1;
     unsigned int ind_data_yaw = ind_data_pitch + 1;
-    const int ind_data_joint = data.cols() - 1;
     //
-    unsigned int ind_data = 0;
-    Eigen::RowVectorXd row_last = data.row(ind_data), row;
-    Eigen::Matrix3d Rwe_last = HelperFunctions::rotRPY<double>(row_last(ind_data_roll), row_last(ind_data_pitch), row_last(ind_data_yaw), false);
+    auto rotRPY = [ind_data_roll, ind_data_pitch, ind_data_yaw] (const Eigen::RowVectorXd &row) -> Eigen::Matrix3d
+    {
+        return HelperFunctions::rotRPY<double>(
+            row(ind_data_roll),
+            row(ind_data_pitch),
+            row(ind_data_yaw),
+            false
+        );
+    };
     //
-    int n_joint_curr = 0, n_joint;
-    //
-    Eigen::Vector3d axes[n_joints];
+    Eigen::Matrix<double, 3, Eigen::Dynamic> axes(3, n_joints);
     Eigen::Matrix<double, 3, Eigen::Dynamic> axes_measurements[n_joints];
     for (unsigned int k = 0; k < n_joints; ++k)
     {
-        int n_joint_k_experiments = (data.col(data.cols() - 1).array() == k).count();
-        axes_measurements[k].resize(3, n_joint_k_experiments);
+        axes_measurements[k].resize(3, data[k].rows() / 2);
     }
-
-    unsigned int ind_joint = 0;
-    while (ind_joint < n_joints)
+    //
+    std::vector<unsigned int> ind_joint_order(n_joints);
+    std::iota(ind_joint_order.begin(), ind_joint_order.end(), 0);
+    if (start_from_last)
+        std::reverse(ind_joint_order.begin(), ind_joint_order.end());
+    //
+    unsigned int counter = 0;
+    while (counter < n_joints)
     {
-        n_joint = n_joint_curr;
-        int ind_experiment = 0;
-        while (++ind_data < data.rows())
+        unsigned int ind_joint = ind_joint_order[counter];
+        const DataParser::Data &experiments = data[ind_joint];
+        for (unsigned int ind_exp = 0; ind_exp < experiments.rows(); ind_exp += 2)
         {
-            row = data.row(ind_data);
-            n_joint_curr = row(ind_data_joint);
-            if (n_joint_curr != n_joint)
-                break;
+            const Eigen::RowVectorXd &row_last = experiments.row(ind_exp);
+            const Eigen::RowVectorXd &row_curr = experiments.row(ind_exp+1);
+            //
+            auto Rwe_last = rotRPY(row_last);
+            auto Rwe_curr = rotRPY(row_curr);
             //
             Eigen::Matrix3d R = I;
-            for (unsigned int ind_other_joint = 0 ; ind_other_joint < ind_joint ; ++ind_other_joint)
+            for (auto iter_other = ind_joint_order.begin() ; iter_other < ind_joint_order.begin() + counter ; ++iter_other)
             {
-                R = R * HelperFunctions::rotAngleAxis<double>(row(ind_other_joint), axes[ind_other_joint]);
+                R = R * HelperFunctions::rotAngleAxis<double>(row_curr(*iter_other), axes.col(*iter_other));
             }
-            auto Rwe = HelperFunctions::rotRPY<double>(row(ind_data_roll), row(ind_data_pitch), row(ind_data_yaw), false);
-            R = R.transpose() * Rwe * Rwe_last.transpose() * R;
             //
-            double delta_angle_ji = row(ind_joint) - row_last(ind_joint);
+            if (start_from_last)
+                R = R.transpose() * Rwe_curr * Rwe_last.transpose() * R;
+            else
+                R = R * Rwe_last.transpose() * Rwe_curr * R.transpose();
             //
-            axes_measurements[ind_joint].col(ind_experiment++) = HelperFunctions::axisFromRot(R, delta_angle_ji);
+            double delta_angle_ji = row_curr(ind_joint) - row_last(ind_joint);
             //
-            row_last = row;
-            Rwe_last = Rwe;
+            axes_measurements[ind_joint].col(ind_exp / 2) = HelperFunctions::axisFromRot<double>(R, delta_angle_ji);
         }
-        axes[ind_joint] = axes_measurements[ind_joint].rowwise().mean().normalized();
-        std::cout << axes[ind_joint].transpose() << std::endl;
-        ++ind_joint;
+        axes.col(ind_joint) = axes_measurements[ind_joint].rowwise().mean().normalized();
+        //
+        ++counter;
     }
+    return axes;
 }

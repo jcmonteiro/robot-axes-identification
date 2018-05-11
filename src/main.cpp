@@ -17,12 +17,15 @@ int main(int argc, char **argv)
     DataParser parser;
     parser.setFilter( {3,4,5} );
     parser.setDelimiter('\t');
+    parser.setStorageMask( DataParser::Storage::MULTIPLE | DataParser::Storage::SINGLE );
     if (!parser.readFile(argv[1]))
         return 1;
 
     Identification ident(parser.getNJoints());
-    ident.setData(parser.getData());
-    ident.identifyAxes();
+    ident.setData(parser);
+    std::cout << ident.identifyAxes(false) << std::endl;
+    std::cout << "--" << std::endl;
+    std::cout << ident.identifyAxes(true) << std::endl;
 
     return 0;
 }
