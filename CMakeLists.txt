@@ -19,16 +19,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 find_package(Eigen3 REQUIRED)
 find_package(Boost COMPONENTS unit_test_framework)
 
-file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
-
 include_directories(
     include
     ${EIGEN3_INCLUDE_DIR}
 )
 
 add_library(axes-ident SHARED "src/DataParser.cpp" "src/Identification.cpp")
-add_executable(axes-ident-main "src/main.cpp")
-target_link_libraries(axes-ident-main axes-ident)
 
 # Unit tests
 if (Boost_FOUND)
