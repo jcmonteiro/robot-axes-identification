@@ -27,6 +27,11 @@ public:
     constexpr static double DEFAULT_MAX_STALL_MOVEMENT = 0.0002;
 
     /**
+     * @brief Default value for minimum required movement on the joint that moved the most.
+     */
+    constexpr static double DEFAULT_MIN_MOVEMENT = 0.001;
+
+    /**
      * @brief Storage type.
      */
     enum Storage
@@ -43,6 +48,7 @@ private:
     std::vector<Data> data_by_joint;
     bool ok_data;
     double tol_max_stall_movement;
+    double tol_min_movement;
     unsigned short mask_storage;
 
     /**
@@ -112,7 +118,8 @@ public:
      * If movement above a threshold value is detected on the ramaining joints, the experiment
      * is considered invalid and \ref DataParser.INDEX_INVALID is added in the end of the row.
      */
-    static void appendMovingJointIndex(Data &data, unsigned int n_joints, double tol_max_stall_movement = DEFAULT_MAX_STALL_MOVEMENT);
+    static void appendMovingJointIndex(Data &data, unsigned int n_joints,
+        double tol_max_stall_movement = DEFAULT_MAX_STALL_MOVEMENT, double tol_min_movement = DEFAULT_MIN_MOVEMENT);
 
     /**
      * @brief Maximum allowed movement on the joints that should not have moved.
@@ -123,6 +130,17 @@ public:
     {
         this->_validateTolerance(tol_stall);
         tol_max_stall_movement = tol_stall;
+    }
+
+    /**
+     * @brief Minimum required movement on the joint that moved the most.
+     * 
+     * @param tol tolerance value
+     */
+    inline void setToleranceMinMovement(double tol)
+    {
+        this->_validateTolerance(tol);
+        tol_min_movement = tol;
     }
 
     /**

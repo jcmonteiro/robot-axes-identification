@@ -9,7 +9,8 @@ using namespace axes_ident;
 DataParser::DataParser() :
     delim(' '), header_size(0), n_joints(0),
     ok_data(false), tol_max_stall_movement(DataParser::DEFAULT_MAX_STALL_MOVEMENT),
-    mask_storage(Storage::SINGLE)
+    tol_min_movement(DataParser::DEFAULT_MIN_MOVEMENT),
+    mask_storage(Storage::SINGLE | Storage::MULTIPLE)
 {
 }
 
@@ -112,7 +113,7 @@ void DataParser::splitExperimentIntoJoints(std::vector<Data> &data_by_joint, con
     }
 }
 
-void DataParser::appendMovingJointIndex(DataParser::Data &data, unsigned int n_joints, double tol_max_stall_movement)
+void DataParser::appendMovingJointIndex(DataParser::Data &data, unsigned int n_joints, double tol_max_stall_movement, double tol_min_movement)
 {
     data.conservativeResize(data.rows(), data.cols() + 1);
     auto joints = data.block(0, 0, data.rows(), n_joints);
@@ -126,9 +127,14 @@ void DataParser::appendMovingJointIndex(DataParser::Data &data, unsigned int n_j
         row = joints.row(k).array();
         row_diff = Eigen::abs(row - last_row);
         row_diff.maxCoeff(&index_max);
-        row_diff(index_max) = 0;
-        row_diff.maxCoeff(&index_stall_max);
-        data(k, ind_last) = (row_diff(index_stall_max) > tol_max_stall_movement) ? DataParser::INDEX_INVALID : index_max;
+        if (row_diff(index_max) < tol_min_movement)
+            data(k, ind_last) = DataParser::INDEX_INVALID;
+        else
+        {
+            row_diff(index_max) = 0;
+            row_diff.maxCoeff(&index_stall_max);
+            data(k, ind_last) = (row_diff(index_stall_max) > tol_max_stall_movement) ? DataParser::INDEX_INVALID : index_max;
+        }
         last_row = row;
     }
 }
