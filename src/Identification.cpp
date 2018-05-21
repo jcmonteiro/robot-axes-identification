@@ -32,7 +32,7 @@ bool Identification::setData(const DataParser &parser)
         std::cerr << "[Error] Parser contains errors. Identification algorithm was not configured." << std::endl;
         return false;
     }
-    const DataParser::Data &data = parser.getData();
+    const DataParser::Data &data = parser.getDataByJoint()[0];
     if (data.cols() != n_joints + 4)
     {
         std::cerr << "[Error] Data columns = " << data.cols() << " , but " <<
@@ -101,13 +101,16 @@ Eigen::Matrix<double, 3, Eigen::Dynamic> Identification::identifyAxes(bool start
             Eigen::Matrix3d R = I;
             for (auto iter_other = ind_joint_order.begin() ; iter_other < ind_joint_order.begin() + counter ; ++iter_other)
             {
-                R = R * HelperFunctions::rotAngleAxis<double>(row_curr(*iter_other), axes.col(*iter_other));
+                if (start_from_last)
+                    R = HelperFunctions::rotAngleAxis<double>(row_curr(*iter_other), axes.col(*iter_other)) * R;
+                else
+                    R = R * HelperFunctions::rotAngleAxis<double>(row_curr(*iter_other), axes.col(*iter_other));
             }
             //
             if (start_from_last)
-                R = R.transpose() * Rwe_curr * Rwe_last.transpose() * R;
-            else
                 R = R * Rwe_last.transpose() * Rwe_curr * R.transpose();
+            else
+                R = R.transpose() * Rwe_curr * Rwe_last.transpose() * R;
             //
             double delta_angle_ji = row_curr(ind_joint) - row_last(ind_joint);
             //
