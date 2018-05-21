@@ -1,5 +1,7 @@
 #include "Identification.hpp"
 #include <iostream>
+#include <algorithm>
+#include <numeric>
 
 using namespace axes_ident;
 
