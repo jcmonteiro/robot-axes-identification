@@ -8,9 +8,9 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/axes-ident",
+            "program": "${workspaceFolder}/build/axes-ident-main",
             "args": [
-                "${workspaceFolder}/tests/panda.txt"
+                "${workspaceFolder}/tests/random_data.txt"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
